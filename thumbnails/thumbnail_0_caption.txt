@@ -1,0 +1,3 @@
+Caption: a collage of photos showing different types of cars 
+Timestamp: 0:01:07
+Quality Score: 0.68
