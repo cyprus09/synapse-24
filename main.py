@@ -5,7 +5,7 @@ try:
     generator = VideoThumbnailGenerator()
     
     # Process video
-    results = generator.process_video('test-video.mp4', num_thumbnails=4)
+    results = generator.process_video('test-videos/elephant-video.mp4', num_thumbnails=6)
     
     # Save results
     generator.save_thumbnails(results)
