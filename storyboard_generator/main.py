@@ -1,4 +1,4 @@
-from storyboard_generator_generic import StoryBoardGeneratorGeneric, PredictiveMetrics
+from storyboard_generator_generic import StoryBoardGeneratorGeneric, PredictiveMetrics, ContentRecommendations
 import cv2
 import numpy as np
 from pathlib import Path
@@ -56,62 +56,85 @@ def print_video_metrics(metrics, is_youtube=True):
         print(f"  • Average Scene Duration: {format_duration(avg_scene_duration)}")
 
 
-def print_recommendations(recommendations):
-    print("\n=== 📋 Recommendations ===")
+def print_recommendations(recommendations: ContentRecommendations):
+    print("\n=== 📈 Improvement Recommendations ===")
 
-    if recommendations.title_suggestions:
-        print("\n📝 Title Suggestions:")
-        for suggestion in recommendations.title_suggestions:
-            print(f"  • {suggestion}")
+    print("\n🎯 Key Improvements Needed:")
+    for imp in recommendations.key_improvements:
+        print(f"\n  {imp['area']} ({imp['impact']} Impact)")
+        print(f"  • Issue: {imp['issue']}")
+        print(f"  • Solution: {imp['recommendation']}")
 
-    if recommendations.thumbnail_improvements:
-        print("\n🖼️ Thumbnail Improvements:")
-        for improvement in recommendations.thumbnail_improvements:
-            print(f"  • {improvement}")
+    print("\n📝 Title Optimization:")
+    for suggestion in recommendations.title_suggestions:
+        print(f"  • {suggestion}")
 
-    if recommendations.content_improvements:
-        print("\n🎥 Content Improvements:")
-        for improvement in recommendations.content_improvements:
-            print(f"\n  {improvement['area']}:")
-            print(f"    • Issue: {improvement['suggestion']}")
-            print(f"    • Action: {improvement['action']}")
+    print("\n🖼️ Thumbnail Improvements:")
+    for improvement in recommendations.thumbnail_improvements:
+        print(f"  • {improvement}")
 
-    if recommendations.optimization_suggestions:
-        print("\n⚙️ Technical Optimizations:")
-        for suggestion in recommendations.optimization_suggestions:
-            print(f"  • {suggestion}")
+    print("\n⚙️ Technical Optimizations:")
+    for opt in recommendations.technical_optimizations:
+        print(f"\n  {opt['aspect']}")
+        print(f"  • Current: {opt['current']}")
+        print(f"  • Recommended: {opt['recommended']}")
+        print(f"  • Why: {opt['reason']}")
+
+    print("\n🤝 Engagement Strategies:")
+    for strategy in recommendations.engagement_strategies:
+        print(f"\n  {strategy['aspect']} ({strategy['priority']} Priority)")
+        print(f"  • Strategy: {strategy['strategy']}")
+        print(f"  • How: {strategy['implementation']}")
+
+    print("\n📚 Lessons from Benchmark:")
+    for learning in recommendations.benchmark_learnings:
+        print(f"\n  {learning['element']}")
+        print(f"  • Observation: {learning['observation']}")
+        print(f"  • Application: {learning['application']}")
 
 
 def print_predictive_metrics(metrics: PredictiveMetrics):
-    print("\n=== 🔮 Predictive Analytics ===")
+    print("\n=== 🎯 Local Video Potential Analysis ===")
 
-    print("\n📈 Viral Potential:")
-    print(f"  • Viral Probability: {metrics.viral_probability:.1f}%")
-    print(f"  • 30-Day View Estimate: {metrics.estimated_views_30d:,}")
-    print(f"  • Estimated Engagement Rate: {metrics.estimated_engagement_rate:.1f}%")
-    print(f"  • Viewer Retention Estimate: {metrics.viewer_retention_estimate:.1%}")
+    print("\n📊 Benchmark Comparison:")
+    for factor, score in metrics.benchmark_comparison.items():
+        status = "✅" if score >= 0.8 else "⚠️" if score >= 0.6 else "❌"
+        print(f"  {status} {factor.replace('_', ' ').title()}: {score:.0%}")
 
-    print("\n⏰ Best Posting Times:")
+    print("\n🚀 Growth Predictions:")
+    print(f"  • Viral Potential: {metrics.viral_probability:.1f}%")
+    print(f"  • Expected Views (30 days): {metrics.estimated_views_30d:,}")
+    print(f"  • Projected Engagement Rate: {metrics.estimated_engagement_rate:.1f}%")
+    print(f"  • Estimated Viewer Retention: {metrics.viewer_retention_estimate:.0%}")
+
+    print("\n💪 Competitive Advantages:")
+    for aspect, advantage in metrics.competition_level.items():
+        print(f"  • {aspect.title()}: {advantage}")
+
+    print("\n👥 Target Audience:")
+    for demo in metrics.target_demographics:
+        print(f"\n  Segment: {demo['age_range']}")
+        print(f"  • Platforms: {demo['platforms']}")
+        print(f"  • Interests: {demo['interests']}")
+        print(f"  • Strategy: {demo['reason']}")
+
+    print("\n⏰ Recommended Posting Times:")
     for t in metrics.best_posting_times:
         print(f"  • {t.strftime('%I:%M %p')}")
 
-    print("\n👥 Target Demographics:")
-    for demo in metrics.target_demographics:
-        print(f"\n  Age Range: {demo['age_range']}")
-        print(f"  Platforms: {demo['platforms']}")
-        print(f"  Interests: {demo['interests']}")
-        print(f"  Reasoning: {demo['reason']}")
-
-    print("\n🎯 Content Performance Factors:")
+    print("\n🔑 Success Factors:")
     for factor, score in metrics.content_virality_factors.items():
-        print(f"  • {factor.replace('_', ' ').title()}: {score:.2f}")
+        quality = (
+            "Excellent"
+            if score > 0.8
+            else "Good" if score > 0.6 else "Needs Improvement"
+        )
+        print(f"  • {factor.replace('_', ' ').title()}: {quality} ({score:.0%})")
 
-    print("\n🏷️ Recommended Hashtags:")
+    print("\n#️⃣ Recommended Hashtags:")
     print(f"  • {', '.join(['#' + tag for tag in metrics.recommended_hashtags])}")
 
-    print("\n📊 Market Analysis:")
-    print(f"  • Competition Level: {metrics.competition_level}")
-    print(f"  • Growth Potential: {metrics.growth_potential}")
+    print(f"\n📈 Overall Growth Potential: {metrics.growth_potential}")
 
 
 def main():
@@ -141,10 +164,12 @@ def main():
         youtube_metrics = analyzer.analyze_youtube_video(args.youtube_id)
         print("✅ YouTube video analysis completed")
         print_video_metrics(youtube_metrics, is_youtube=True)
-        
+
         # generate predictions
         print("\n⌛ Generating predictive analytics...")
-        predictive_metrics = analyzer.predict_performance(youtube_metrics, local_analysis)
+        predictive_metrics = analyzer.predict_performance(
+            youtube_metrics, local_analysis
+        )
         print_predictive_metrics(predictive_metrics)
 
         # generate and display recommendations

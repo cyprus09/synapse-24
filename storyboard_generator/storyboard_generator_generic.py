@@ -54,10 +54,12 @@ class ContentAnalysis:
 
 @dataclass
 class ContentRecommendations:
+    key_improvements: List[Dict[str, str]]
     title_suggestions: List[str]
     thumbnail_improvements: List[str]
-    content_improvements: List[Dict[str, str]]
-    optimization_suggestions: List[str]
+    technical_optimizations: List[Dict[str, str]]
+    engagement_strategies: List[Dict[str, str]]
+    benchmark_learnings: List[Dict[str, str]]
 
 
 @dataclass
@@ -72,6 +74,7 @@ class PredictiveMetrics:
     recommended_hashtags: List[str]
     competition_level: str
     growth_potential: str
+    benchmark_comparison: List[Dict[str, str]]
 
 
 class StoryBoardGeneratorGeneric:
@@ -185,39 +188,263 @@ class StoryBoardGeneratorGeneric:
             self.logger.error(f"Error analyzing local video: {str(e)}")
             raise
 
-    def compare_videos(
-        self, youtube_metrics: ContentMetrics, local_analysis: ContentAnalysis
-    ) -> ContentRecommendations:
-        """Compare local video with YouTube video and generate recommendations"""
+    def compare_videos(self, youtube_metrics, local_analysis) -> ContentRecommendations:
+        """Generate recommendations for local video based on benchmark comparison"""
         try:
-            # Analyze title and tags
+            # Analyze title effectiveness
             title_suggestions = self._analyze_title(youtube_metrics.title)
 
-            # Analyze thumbnail
-            thumbnail_improvements = self._analyze_thumbnail_quality(
-                youtube_metrics.thumbnail_url
-            )
-
-            # Generate content improvements based on comparison
-            content_improvements = self._generate_content_improvements(
+            # Generate key improvements based on benchmark comparison
+            key_improvements = self._identify_key_improvements(
                 local_analysis, youtube_metrics
             )
 
-            # Generate optimization suggestions
-            optimization_suggestions = self._generate_optimizations(
+            # Technical optimizations based on quality comparison
+            technical_optimizations = self._generate_technical_optimizations(
                 local_analysis, youtube_metrics
+            )
+
+            # Analyze successful elements from benchmark
+            benchmark_learnings = self._extract_benchmark_learnings(
+                local_analysis, youtube_metrics
+            )
+
+            # Generate engagement strategies
+            engagement_strategies = self._generate_engagement_strategies(
+                local_analysis, youtube_metrics
+            )
+
+            # Thumbnail recommendations
+            thumbnail_improvements = self._generate_thumbnail_recommendations(
+                local_analysis.thumbnail_data
             )
 
             return ContentRecommendations(
+                key_improvements=key_improvements,
                 title_suggestions=title_suggestions,
                 thumbnail_improvements=thumbnail_improvements,
-                content_improvements=content_improvements,
-                optimization_suggestions=optimization_suggestions,
+                technical_optimizations=technical_optimizations,
+                engagement_strategies=engagement_strategies,
+                benchmark_learnings=benchmark_learnings,
             )
 
         except Exception as e:
             self.logger.error(f"Error generating recommendations: {str(e)}")
             raise
+
+    def _identify_key_improvements(
+        self, local_analysis, youtube_metrics
+    ) -> List[Dict[str, str]]:
+        """Identify key areas for improvement based on benchmark comparison"""
+        improvements = []
+
+        # Duration comparison
+        duration_ratio = local_analysis.duration / youtube_metrics.duration
+        if duration_ratio > 1.3:
+            improvements.append(
+                {
+                    "area": "Video Length",
+                    "issue": "Video is significantly longer than benchmark",
+                    "recommendation": f"Consider trimming content to around {int(youtube_metrics.duration/60)} minutes",
+                    "impact": "HIGH",
+                }
+            )
+        elif duration_ratio < 0.7:
+            improvements.append(
+                {
+                    "area": "Video Length",
+                    "issue": "Video might be too short compared to benchmark",
+                    "recommendation": "Add more valuable content or detailed explanations",
+                    "impact": "MEDIUM",
+                }
+            )
+
+        # Scene dynamics
+        benchmark_scenes = max(
+            youtube_metrics.duration / 10, 1
+        )  # Assume 1 scene change every 10s as minimum
+        local_scenes = len(local_analysis.scene_changes)
+        if local_scenes < benchmark_scenes * 0.7:
+            improvements.append(
+                {
+                    "area": "Visual Engagement",
+                    "issue": "Lower scene variety compared to benchmark",
+                    "recommendation": "Add more visual variety, transitions, or camera angles",
+                    "impact": "HIGH",
+                }
+            )
+
+        # Audio quality comparison
+        if local_analysis.audio_analysis:
+            if local_analysis.audio_analysis.background_noise > 0.2:
+                improvements.append(
+                    {
+                        "area": "Audio Quality",
+                        "issue": "Higher background noise than ideal",
+                        "recommendation": "Use noise reduction, record in quieter environment, or use better microphone",
+                        "impact": "HIGH",
+                    }
+                )
+
+        return improvements
+
+    def _generate_technical_optimizations(
+        self, local_analysis, youtube_metrics
+    ) -> List[Dict[str, str]]:
+        """Generate technical optimization recommendations"""
+        optimizations = []
+
+        # Resolution check
+        if local_analysis.resolution[0] < 1920:
+            optimizations.append(
+                {
+                    "aspect": "Video Resolution",
+                    "current": f"{local_analysis.resolution[0]}x{local_analysis.resolution[1]}",
+                    "recommended": "1920x1080 or higher",
+                    "reason": "Higher resolution improves viewer experience and perceived quality",
+                }
+            )
+
+        # Frame rate analysis
+        if local_analysis.fps < 30:
+            optimizations.append(
+                {
+                    "aspect": "Frame Rate",
+                    "current": f"{local_analysis.fps:.1f} FPS",
+                    "recommended": "30 FPS or higher",
+                    "reason": "Smoother playback enhances viewing experience",
+                }
+            )
+
+        # Brightness and contrast
+        if local_analysis.brightness_analysis["std"] < 40:
+            optimizations.append(
+                {
+                    "aspect": "Visual Contrast",
+                    "current": "Low contrast",
+                    "recommended": "Increase lighting dynamics",
+                    "reason": "Better contrast improves visual engagement",
+                }
+            )
+
+        return optimizations
+
+    def _extract_benchmark_learnings(
+        self, local_analysis, youtube_metrics
+    ) -> List[Dict[str, str]]:
+        """Extract successful elements from benchmark video"""
+        learnings = []
+
+        # Title structure
+        if youtube_metrics.title:
+            learnings.append(
+                {
+                    "element": "Title Structure",
+                    "observation": self._analyze_title_structure(youtube_metrics.title),
+                    "application": "Apply similar pattern to your titles",
+                }
+            )
+
+        # Tag usage
+        if youtube_metrics.tags:
+            learnings.append(
+                {
+                    "element": "Tag Strategy",
+                    "observation": f"Uses {len(youtube_metrics.tags)} targeted tags",
+                    "application": "Implement similar tag density and relevance",
+                }
+            )
+
+        # Content pacing
+        avg_scene_duration = youtube_metrics.duration / (
+            len(local_analysis.scene_changes) + 1
+        )
+        learnings.append(
+            {
+                "element": "Content Pacing",
+                "observation": f"Average scene duration: {avg_scene_duration:.1f} seconds",
+                "application": "Match scene change frequency for optimal engagement",
+            }
+        )
+
+        return learnings
+
+    def _generate_engagement_strategies(
+        self, local_analysis, youtube_metrics
+    ) -> List[Dict[str, str]]:
+        """Generate engagement strategies based on benchmark success"""
+        strategies = []
+
+        # Opening hook
+        if local_analysis.duration > 0:
+            strategies.append(
+                {
+                    "aspect": "Opening Hook",
+                    "strategy": "Create compelling first 15 seconds",
+                    "implementation": "Include key value proposition and visual interest early",
+                    "priority": "HIGH",
+                }
+            )
+
+        # Calls to action
+        strategies.append(
+            {
+                "aspect": "Viewer Interaction",
+                "strategy": "Strategic call-to-actions",
+                "implementation": "Add subscription/like reminders at key moments",
+                "priority": "MEDIUM",
+            }
+        )
+
+        # Content structure
+        strategies.append(
+            {
+                "aspect": "Content Structure",
+                "strategy": "Clear content progression",
+                "implementation": "Use chapters/segments like benchmark video",
+                "priority": "HIGH",
+            }
+        )
+
+        return strategies
+
+    def _analyze_title_structure(self, title: str) -> str:
+        """Analyze successful title structure"""
+        patterns = []
+        if ":" in title:
+            patterns.append("Uses colon for subtitle")
+        if "?" in title:
+            patterns.append("Uses question format")
+        if any(char.isupper() for char in title):
+            patterns.append("Uses strategic capitalization")
+        if any(str(num) for num in range(10) if str(num) in title):
+            patterns.append("Includes numbers")
+
+        return " | ".join(patterns) if patterns else "Simple, direct title"
+
+    def _generate_thumbnail_recommendations(self, thumbnail_data: Dict) -> List[str]:
+        """Generate thumbnail improvement recommendations"""
+        recommendations = []
+
+        if thumbnail_data:
+            if thumbnail_data.get("brightness", 0) < 100:
+                recommendations.append(
+                    "Increase thumbnail brightness for better visibility"
+                )
+            if thumbnail_data.get("contrast", 0) < 50:
+                recommendations.append("Improve thumbnail contrast for visual impact")
+            if thumbnail_data.get("saturation", 0) < 100:
+                recommendations.append("Consider increasing color saturation")
+
+        recommendations.extend(
+            [
+                "Include clear, readable text overlay",
+                "Use close-up shots of key subjects",
+                "Implement color psychology for emotional impact",
+            ]
+        )
+
+        return recommendations
 
     def _parse_duration(self, duration_str: str) -> float:
         hours = minutes = seconds = 0
@@ -267,35 +494,6 @@ class StoryBoardGeneratorGeneric:
             )
 
         return suggestions
-
-    def _analyze_thumbnail_quality(self, thumbnail_url: str) -> List[str]:
-        """Analyze thumbnail and suggest improvements"""
-        suggestions = []
-        try:
-            response = requests.get(thumbnail_url)
-            img = cv2.imdecode(
-                np.frombuffer(response.content, np.uint8), cv2.IMREAD_COLOR
-            )
-
-            # Analyze brightness
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            brightness = np.mean(gray)
-            if brightness < 100:
-                suggestions.append(
-                    "Thumbnail appears dark - consider increasing brightness"
-                )
-
-            # Analyze contrast
-            contrast = np.std(gray)
-            if contrast < 50:
-                suggestions.append(
-                    "Low contrast in thumbnail - consider adding more contrast"
-                )
-
-            return suggestions
-        except Exception as e:
-            self.logger.warning(f"Error analyzing thumbnail: {str(e)}")
-            return ["Could not analyze thumbnail"]
 
     def _extract_audio(self, video_path: str) -> str:
         """Extract audio from video file"""
@@ -484,64 +682,90 @@ class StoryBoardGeneratorGeneric:
 
         return optimizations
 
-    def _calculate_quality_score(self, analysis) -> float:
-        """Calculate overall production quality score"""
-        scores = {
-            "resolution": min(analysis.resolution[0] / 1920, 1),  # normalize to 1080p
-            "framerate": min(analysis.fps / 30, 1),  # normalize to 30fps
-            "brightness": min(
-                analysis.brightness_analysis["std"] / 50, 1
-            ),  # dynamic range
-            "scene_variety": min(
-                len(analysis.scene_changes) / (analysis.duration / 30), 1
+    def predict_performance(self, youtube_metrics, local_analysis) -> PredictiveMetrics:
+        """
+        Predict local video performance using YouTube video as benchmark
+        """
+        # Compare local video quality against benchmark
+        benchmark_comparison = {
+            "resolution": self._compare_resolution(local_analysis, youtube_metrics),
+            "duration": self._compare_duration(local_analysis, youtube_metrics),
+            "pacing": self._analyze_pacing(local_analysis.scene_changes),
+            "audio_quality": self._analyze_audio_engagement(
+                local_analysis.audio_analysis
+            ),
+            "production_value": self._calculate_quality_score(local_analysis),
+        }
+
+        # Calculate overall quality ratio compared to benchmark
+        quality_ratio = sum(benchmark_comparison.values()) / len(benchmark_comparison)
+
+        # Analyze content virality factors for local video
+        viral_factors = {
+            "production_quality": benchmark_comparison["production_value"],
+            "content_pacing": benchmark_comparison["pacing"],
+            "audio_quality": benchmark_comparison["audio_quality"],
+            "engagement_potential": self._estimate_engagement_potential(
+                local_analysis, youtube_metrics
             ),
         }
-        return sum(scores.values()) / len(scores)
 
-    def _analyze_pacing(self, scene_changes: List[float]) -> float:
-        """Analyze content pacing based on scene changes"""
-        if not scene_changes:
+        # Calculate viral probability based on benchmark comparison
+        viral_probability = self._calculate_viral_probability(
+            viral_factors, youtube_metrics
+        )
+
+        # Estimate potential views based on benchmark performance
+        potential_views = self._estimate_potential_views(youtube_metrics, quality_ratio)
+
+        # Analyze competitive advantages/disadvantages
+        competitive_advantage = self._analyze_competitive_advantage(
+            local_analysis, youtube_metrics
+        )
+
+        # Calculate potential engagement rate
+        potential_engagement = self._estimate_potential_engagement(
+            youtube_metrics, viral_factors
+        )
+
+        # Estimate retention based on local video characteristics
+        retention_estimate = self._estimate_retention(local_analysis, viral_factors)
+
+        return PredictiveMetrics(
+            viral_probability=viral_probability,
+            estimated_views_30d=potential_views,
+            estimated_engagement_rate=potential_engagement,
+            best_posting_times=self._calculate_optimal_posting_times(
+                youtube_metrics.category_id
+            ),
+            target_demographics=self._analyze_target_demographics(
+                youtube_metrics, local_analysis
+            ),
+            content_virality_factors=viral_factors,
+            viewer_retention_estimate=retention_estimate,
+            recommended_hashtags=self._generate_hashtags(
+                youtube_metrics, local_analysis
+            ),
+            competition_level=competitive_advantage,
+            growth_potential=self._calculate_growth_potential(
+                viral_factors, competitive_advantage
+            ),
+            benchmark_comparison=benchmark_comparison,
+        )
+
+    def _compare_resolution(self, local_analysis, youtube_metrics) -> float:
+        """Compare local video resolution to typical successful videos"""
+        local_res = local_analysis.resolution[0] * local_analysis.resolution[1]
+        benchmark_res = 1920 * 1080  # HD benchmark
+        return min(local_res / benchmark_res, 1.0)
+
+    def _compare_duration(self, local_analysis, youtube_metrics) -> float:
+        """Compare video duration effectiveness"""
+        # Calculate optimal duration ratio (not too short, not too long compared to benchmark)
+        duration_ratio = local_analysis.duration / youtube_metrics.duration
+        if duration_ratio > 1.5 or duration_ratio < 0.5:
             return 0.5
-
-        avg_scene_duration = len(scene_changes) / len(scene_changes)
-        return min(1.0, 1.5 / avg_scene_duration) if avg_scene_duration > 0 else 0.5
-
-    def _get_audio_score(self, audio_analysis) -> float:
-        """Calculate audio quality score"""
-        if not audio_analysis:
-            return 0.5
-
-        scores = {
-            "volume": 1
-            - min(
-                abs(audio_analysis.average_volume - 0.7), 1
-            ),  # ideal volume around 0.7
-            "noise": 1
-            - min(audio_analysis.background_noise * 2, 1),  # lower noise is better
-            "clarity": audio_analysis.audio_quality.get("clarity", 0.5),
-        }
-        return sum(scores.values()) / len(scores)
-
-    def _analyze_thumbnail_appeal(self, thumbnail_data: Dict) -> float:
-        """Analyze thumbnail effectiveness"""
-        if not thumbnail_data:
-            return 0.5
-
-        scores = {
-            "contrast": min(thumbnail_data.get("contrast", 0) / 80, 1),  # good contrast
-            "brightness": min(
-                abs(thumbnail_data.get("brightness", 0) - 127) / 127, 1
-            ),  # balanced brightness
-            "saturation": min(
-                thumbnail_data.get("saturation", 0) / 150, 1
-            ),  # good color
-        }
-        return sum(scores.values()) / len(scores)
-
-    def _calculate_view_multiplier(self, viral_factors: Dict[str, float]) -> float:
-        """Calculate view multiplication factor"""
-        base_multiplier = sum(viral_factors.values()) / len(viral_factors)
-        return 1 + (base_multiplier * 2)  # Can multiply views up to 3x
+        return 1.0 - abs(1 - duration_ratio)
 
     def _calculate_optimal_posting_times(self, category_id: str) -> List[time]:
         """Determine best posting times based on category"""
@@ -557,6 +781,133 @@ class StoryBoardGeneratorGeneric:
             "default": [time(11, 0), time(15, 0), time(19, 0)],
         }
         return category_times.get(category_id, category_times["default"])
+
+    def _analyze_pacing(self, scene_changes: List[float]) -> float:
+        """Analyze content pacing based on scene changes"""
+        if not scene_changes:
+            return 0.5
+
+        avg_scene_duration = len(scene_changes) / len(scene_changes)
+        return min(1.0, 1.5 / avg_scene_duration) if avg_scene_duration > 0 else 0.5
+
+    def _calculate_quality_score(self, analysis) -> float:
+        """Calculate overall production quality score"""
+        scores = {
+            "resolution": min(analysis.resolution[0] / 1920, 1),  # normalize to 1080p
+            "framerate": min(analysis.fps / 30, 1),  # normalize to 30fps
+            "brightness": min(
+                analysis.brightness_analysis["std"] / 50, 1
+            ),  # dynamic range
+            "scene_variety": min(
+                len(analysis.scene_changes) / (analysis.duration / 30), 1
+            ),
+        }
+        return sum(scores.values()) / len(scores)
+
+    def _estimate_engagement_potential(self, local_analysis, youtube_metrics) -> float:
+        """Estimate potential engagement based on content characteristics"""
+        factors = {
+            "pacing_score": self._analyze_pacing(local_analysis.scene_changes),
+            "audio_engagement": self._analyze_audio_engagement(
+                local_analysis.audio_analysis
+            ),
+            "visual_interest": len(local_analysis.scene_changes)
+            / local_analysis.duration,
+        }
+        return sum(factors.values()) / len(factors)
+
+    def _analyze_audio_engagement(self, audio_analysis) -> float:
+        """Analyze audio characteristics for engagement potential"""
+        if not audio_analysis:
+            return 0.5
+
+        engagement_factors = {
+            "clarity": audio_analysis.audio_quality.get("clarity", 0.5),
+            "dynamics": 1
+            - abs(audio_analysis.peak_volume - audio_analysis.average_volume),
+            "speech_presence": len(audio_analysis.speech_segments)
+            / 60,  # segments per minute
+        }
+        return sum(engagement_factors.values()) / len(engagement_factors)
+
+    def _analyze_competitive_advantage(
+        self, local_analysis, youtube_metrics
+    ) -> Dict[str, str]:
+        """Analyze competitive advantages and disadvantages"""
+        advantages = {}
+
+        # Resolution comparison
+        if local_analysis.resolution[0] >= 1920:
+            advantages["resolution"] = "Higher quality video resolution"
+
+        # Audio quality comparison
+        if (
+            local_analysis.audio_analysis
+            and local_analysis.audio_analysis.background_noise < 0.1
+        ):
+            advantages["audio"] = "Superior audio quality"
+
+        # Content pacing
+        scene_frequency = len(local_analysis.scene_changes) / local_analysis.duration
+        if scene_frequency > 0.2:  # More than 1 scene change every 5 seconds
+            advantages["pacing"] = "Dynamic content pacing"
+
+        # Production value
+        if self._calculate_quality_score(local_analysis) > 0.8:
+            advantages["production"] = "High production value"
+
+        if not advantages:
+            advantages["note"] = (
+                "Consider improving production quality to match benchmark"
+            )
+
+        return advantages
+
+    def _calculate_viral_probability(
+        self, viral_factors: Dict[str, float], youtube_metrics
+    ) -> float:
+        """Calculate probability of video going viral based on benchmark comparison"""
+        base_probability = sum(viral_factors.values()) / len(viral_factors)
+
+        # Adjust based on benchmark success
+        benchmark_multiplier = min(youtube_metrics.engagement_rate / 5, 2)
+
+        return min(base_probability * benchmark_multiplier * 100, 100)
+
+    def _estimate_potential_views(self, youtube_metrics, quality_ratio: float) -> int:
+        """Estimate potential views based on benchmark performance and quality"""
+        base_views = youtube_metrics.views
+        conservative_estimate = int(
+            base_views * quality_ratio * 0.7
+        )  # 70% of benchmark as base
+        return max(conservative_estimate, 1000)  # Minimum threshold
+
+    def _estimate_retention(
+        self, local_analysis, viral_factors: Dict[str, float]
+    ) -> float:
+        """Estimate viewer retention rate"""
+        base_retention = 0.7  # Base 70% retention
+
+        # Adjust based on video factors
+        if local_analysis.duration > 600:  # Longer than 10 minutes
+            base_retention *= 0.8
+
+        if viral_factors["content_pacing"] > 0.7:
+            base_retention *= 1.2
+
+        if viral_factors["production_quality"] > 0.8:
+            base_retention *= 1.1
+
+        return min(base_retention, 1.0)  # Cap at 100%
+
+    def _estimate_potential_engagement(
+        self, youtube_metrics, viral_factors: Dict[str, float]
+    ) -> float:
+        """Estimate potential engagement rate based on benchmark and content quality"""
+        benchmark_engagement = youtube_metrics.engagement_rate
+        quality_multiplier = sum(viral_factors.values()) / len(viral_factors)
+
+        return benchmark_engagement * quality_multiplier
 
     def _analyze_target_demographics(
         self, youtube_metrics, local_analysis
@@ -601,24 +952,6 @@ class StoryBoardGeneratorGeneric:
 
         return targets
 
-    def _estimate_retention(
-        self, local_analysis, viral_factors: Dict[str, float]
-    ) -> float:
-        """Estimate viewer retention rate"""
-        base_retention = 0.7  # Base 70% retention
-
-        # Adjust based on video factors
-        if local_analysis.duration > 600:  # Longer than 10 minutes
-            base_retention *= 0.8
-
-        if viral_factors["content_pacing"] > 0.7:
-            base_retention *= 1.2
-
-        if viral_factors["production_quality"] > 0.8:
-            base_retention *= 1.1
-
-        return min(base_retention, 1.0)  # Cap at 100%
-
     def _generate_hashtags(self, youtube_metrics, local_analysis) -> List[str]:
         """Generate recommended hashtags"""
         hashtags = []
@@ -642,15 +975,6 @@ class StoryBoardGeneratorGeneric:
 
         return list(set(hashtags))  # Remove duplicates
 
-    def _analyze_competition(self, youtube_metrics) -> str:
-        """Analyze competition level in the category"""
-        if youtube_metrics.engagement_rate > 15:
-            return "Low - Good opportunity for growth"
-        elif youtube_metrics.engagement_rate > 5:
-            return "Medium - Standard competition"
-        else:
-            return "High - Saturated market"
-
     def _calculate_growth_potential(
         self, viral_factors: Dict[str, float], competition: str
     ) -> str:
@@ -668,66 +992,3 @@ class StoryBoardGeneratorGeneric:
             return "Medium - Good growth opportunity"
         else:
             return "Low - Consider content optimization"
-
-    def predict_performance(
-        self, youtube_metrics: ContentMetrics, local_analysis: ContentAnalysis
-    ) -> PredictiveMetrics:
-        """Calculate predictive metrics based on video analysis"""
-
-        # Analyze engagement velocity (how quickly video gains engagement)
-        engagement_velocity = youtube_metrics.engagement_rate / (
-            (datetime.now() - youtube_metrics.publish_date).days + 1
-        )
-
-        # Calculate viral probability based on multiple factors
-        viral_factors = {
-            "engagement_strength": min(
-                youtube_metrics.engagement_rate / 5, 1
-            ),  # normalize to 1
-            "production_quality": self._calculate_quality_score(local_analysis),
-            "content_pacing": self._analyze_pacing(local_analysis.scene_changes),
-            "audio_quality": self._get_audio_score(local_analysis.audio_analysis),
-            "thumbnail_effectiveness": self._analyze_thumbnail_appeal(
-                local_analysis.thumbnail_data
-            ),
-        }
-
-        viral_probability = sum(viral_factors.values()) / len(viral_factors) * 100
-
-        # Estimate views based on similar videos in category
-        base_views = youtube_metrics.views
-        view_multiplier = self._calculate_view_multiplier(viral_factors)
-        estimated_views = int(base_views * view_multiplier)
-
-        # Determine optimal posting times based on category and engagement patterns
-        best_times = self._calculate_optimal_posting_times(youtube_metrics.category_id)
-
-        # Analyze target demographics based on content and performance
-        target_demos = self._analyze_target_demographics(
-            youtube_metrics, local_analysis
-        )
-
-        # Calculate viewer retention estimate
-        retention_estimate = self._estimate_retention(local_analysis, viral_factors)
-
-        # Generate recommended hashtags
-        hashtags = self._generate_hashtags(youtube_metrics, local_analysis)
-
-        # Analyze competition level in the category
-        competition = self._analyze_competition(youtube_metrics)
-
-        # Calculate growth potential
-        growth = self._calculate_growth_potential(viral_factors, competition)
-
-        return PredictiveMetrics(
-            viral_probability=viral_probability,
-            estimated_views_30d=estimated_views,
-            estimated_engagement_rate=engagement_velocity * 30,  # 30-day projection
-            best_posting_times=best_times,
-            target_demographics=target_demos,
-            content_virality_factors=viral_factors,
-            viewer_retention_estimate=retention_estimate,
-            recommended_hashtags=hashtags,
-            competition_level=competition,
-            growth_potential=growth,
-        )
