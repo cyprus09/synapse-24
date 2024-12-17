@@ -1,108 +1,117 @@
-from storyboard_generator import ContentStoryboardGenerator
+from storyboard_generator_generic import StoryBoardGeneratorGeneric, PredictiveMetrics
 import cv2
 import numpy as np
 from pathlib import Path
 import argparse
+from datetime import timedelta
 
 
-def analyze_local_video(video_path):
-    """Analyze metrics from a local video file"""
-    try:
-        cap = cv2.VideoCapture(str(video_path))
-        if not cap.isOpened():
-            raise ValueError(f"Could not open video file: {video_path}")
-
-        # Get video properties
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        duration = total_frames / fps  # in seconds
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-        # Calculate basic metrics
-        local_metrics = {
-            "duration": duration,
-            "resolution": f"{width}x{height}",
-            "fps": fps,
-            "total_frames": total_frames,
-            "filesize": Path(video_path).stat().st_size / (1024 * 1024),  # in MB
-        }
-
-        # Sample frames for content analysis
-        frame_samples = []
-        sample_intervals = np.linspace(0, total_frames - 1, 10, dtype=int)
-
-        for frame_no in sample_intervals:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_no)
-            ret, frame = cap.read()
-            if ret:
-                # Calculate average brightness and movement (simplified)
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                frame_samples.append(
-                    {"brightness": np.mean(gray), "frame_no": frame_no}
-                )
-
-        cap.release()
-
-        # Add content analysis metrics
-        local_metrics.update(
-            {
-                "avg_brightness": np.mean(
-                    [sample["brightness"] for sample in frame_samples]
-                ),
-                "frame_samples": frame_samples,
-            }
-        )
-
-        return local_metrics
-
-    except Exception as e:
-        raise Exception(f"Error analyzing local video: {str(e)}")
+def format_duration(seconds: float) -> str:
+    return str(timedelta(seconds=int(seconds)))
 
 
-def compare_videos(local_metrics, youtube_metrics, storyboard):
-    """Compare local video metrics with YouTube video metrics"""
-    # Estimate YouTube video duration based on engagement points
-    youtube_duration = 0
-    if storyboard.engagement_points:
-        last_point = storyboard.engagement_points[-1]
-        minutes, _ = map(int, last_point["timing"].split(":"))
-        youtube_duration = minutes * 60  # Convert to seconds
+def print_video_metrics(metrics, is_youtube=True):
+    source = "YouTube" if is_youtube else "Local"
+    print(f"\n=== {source} Video Analysis ===")
 
-    comparison = {
-        "technical_comparison": {
-            "duration_difference": abs(local_metrics["duration"] - youtube_duration),
-            "resolution": local_metrics["resolution"],
-            "fps": local_metrics["fps"],
-            "filesize": f"{local_metrics['filesize']:.2f}MB",
-        },
-        "content_analysis": {
-            "brightness_score": local_metrics["avg_brightness"],
-            "youtube_engagement": youtube_metrics.engagement_rate,
-            "youtube_retention": youtube_metrics.viewer_retention,
-        },
-        "recommendations": [],
-    }
+    if is_youtube:
+        print(f"\n📊 Engagement Metrics:")
+        print(f"  • Views: {metrics.views:,}")
+        print(f"  • Likes: {metrics.likes:,}")
+        print(f"  • Comments: {metrics.comments:,}")
+        print(f"  • Engagement Rate: {metrics.engagement_rate:.2f}%")
+        print(f"  • Duration: {format_duration(metrics.duration)}")
 
-    # Generate recommendations based on comparison
-    if local_metrics["duration"] > youtube_duration * 1.2:
-        comparison["recommendations"].append(
-            "Consider shortening your video - successful reference is shorter"
-        )
-    elif local_metrics["duration"] < youtube_duration * 0.8:
-        comparison["recommendations"].append(
-            "Consider adding more content - successful reference is longer"
-        )
+        print(f"\n🏷️ Video Details:")
+        print(f"  • Title: {metrics.title}")
+        print(f"  • Category ID: {metrics.category_id}")
+        print(f"  • Published: {metrics.publish_date}")
 
-    # Add storyboard-based recommendations
-    for point in storyboard.engagement_points:
-        time_sec = int(point["timing"].split(":")[0]) * 60
-        if time_sec < local_metrics["duration"]:
-            comparison["recommendations"].append(
-                f"At {point['timing']}: {point['suggestion']}"
+        if metrics.tags:
+            print(f"\n🔖 Tags:")
+            print(
+                f"  • {', '.join(metrics.tags[:5])}{'...' if len(metrics.tags) > 5 else ''}"
             )
+    else:
+        print(f"\n📹 Video Properties:")
+        print(f"  • Duration: {format_duration(metrics.duration)}")
+        print(f"  • Resolution: {metrics.resolution[0]}x{metrics.resolution[1]}")
+        print(f"  • FPS: {metrics.fps:.2f}")
 
-    return comparison
+        print(f"\n💡 Brightness Analysis:")
+        print(f"  • Mean: {metrics.brightness_analysis['mean']:.2f}")
+        print(f"  • Std Dev: {metrics.brightness_analysis['std']:.2f}")
+
+        if metrics.audio_analysis:
+            print(f"\n🔊 Audio Analysis:")
+            print(f"  • Average Volume: {metrics.audio_analysis.average_volume:.2f}")
+            print(
+                f"  • Background Noise Level: {metrics.audio_analysis.background_noise:.2f}"
+            )
+            print(f"  • Tempo: {metrics.audio_analysis.tempo:.2f} BPM")
+
+        print(f"\n🎬 Scene Analysis:")
+        print(f"  • Scene Changes: {len(metrics.scene_changes)}")
+        avg_scene_duration = metrics.duration / (len(metrics.scene_changes) + 1)
+        print(f"  • Average Scene Duration: {format_duration(avg_scene_duration)}")
+
+
+def print_recommendations(recommendations):
+    print("\n=== 📋 Recommendations ===")
+
+    if recommendations.title_suggestions:
+        print("\n📝 Title Suggestions:")
+        for suggestion in recommendations.title_suggestions:
+            print(f"  • {suggestion}")
+
+    if recommendations.thumbnail_improvements:
+        print("\n🖼️ Thumbnail Improvements:")
+        for improvement in recommendations.thumbnail_improvements:
+            print(f"  • {improvement}")
+
+    if recommendations.content_improvements:
+        print("\n🎥 Content Improvements:")
+        for improvement in recommendations.content_improvements:
+            print(f"\n  {improvement['area']}:")
+            print(f"    • Issue: {improvement['suggestion']}")
+            print(f"    • Action: {improvement['action']}")
+
+    if recommendations.optimization_suggestions:
+        print("\n⚙️ Technical Optimizations:")
+        for suggestion in recommendations.optimization_suggestions:
+            print(f"  • {suggestion}")
+
+
+def print_predictive_metrics(metrics: PredictiveMetrics):
+    print("\n=== 🔮 Predictive Analytics ===")
+
+    print("\n📈 Viral Potential:")
+    print(f"  • Viral Probability: {metrics.viral_probability:.1f}%")
+    print(f"  • 30-Day View Estimate: {metrics.estimated_views_30d:,}")
+    print(f"  • Estimated Engagement Rate: {metrics.estimated_engagement_rate:.1f}%")
+    print(f"  • Viewer Retention Estimate: {metrics.viewer_retention_estimate:.1%}")
+
+    print("\n⏰ Best Posting Times:")
+    for t in metrics.best_posting_times:
+        print(f"  • {t.strftime('%I:%M %p')}")
+
+    print("\n👥 Target Demographics:")
+    for demo in metrics.target_demographics:
+        print(f"\n  Age Range: {demo['age_range']}")
+        print(f"  Platforms: {demo['platforms']}")
+        print(f"  Interests: {demo['interests']}")
+        print(f"  Reasoning: {demo['reason']}")
+
+    print("\n🎯 Content Performance Factors:")
+    for factor, score in metrics.content_virality_factors.items():
+        print(f"  • {factor.replace('_', ' ').title()}: {score:.2f}")
+
+    print("\n🏷️ Recommended Hashtags:")
+    print(f"  • {', '.join(['#' + tag for tag in metrics.recommended_hashtags])}")
+
+    print("\n📊 Market Analysis:")
+    print(f"  • Competition Level: {metrics.competition_level}")
+    print(f"  • Growth Potential: {metrics.growth_potential}")
 
 
 def main():
@@ -118,54 +127,34 @@ def main():
     args = parser.parse_args()
 
     try:
-        # Initialize the generator
-        generator = ContentStoryboardGenerator(args.api_key)
+        # initialize the analyzer
+        analyzer = StoryBoardGeneratorGeneric(args.api_key)
 
-        # Analyze local video
-        print(f"Analyzing local video: {args.local_video}")
-        local_metrics = analyze_local_video(args.local_video)
-        print("Local video analysis completed")
+        # analyze local video
+        print("⌛ Analyzing local video...")
+        local_analysis = analyzer.analyze_local_video(args.local_video)
+        print("✅ Local video analysis completed")
+        print_video_metrics(local_analysis, is_youtube=False)
 
-        # Analyze YouTube video
-        print(f"Analyzing YouTube video: {args.youtube_id}")
-        youtube_metrics = generator.analyze_video(args.youtube_id)
-        print("YouTube video analysis completed")
+        # analyze YouTube video
+        print(f"\n⌛ Analyzing YouTube video: {args.youtube_id}")
+        youtube_metrics = analyzer.analyze_youtube_video(args.youtube_id)
+        print("✅ YouTube video analysis completed")
+        print_video_metrics(youtube_metrics, is_youtube=True)
+        
+        # generate predictions
+        print("\n⌛ Generating predictive analytics...")
+        predictive_metrics = analyzer.predict_performance(youtube_metrics, local_analysis)
+        print_predictive_metrics(predictive_metrics)
 
-        # Generate storyboard based on successful YouTube video
-        storyboard = generator.generate_storyboard(
-            video_metrics=youtube_metrics,
-            target_platform="youtube",
-            content_type="vlog",
-        )
-
-        # Compare videos and generate recommendations
-        comparison = compare_videos(local_metrics, youtube_metrics, storyboard)
-
-        # Print results
-        print("\nComparison Results:")
-        print("==================")
-
-        print("\nTechnical Comparison:")
-        for key, value in comparison["technical_comparison"].items():
-            print(f"{key.replace('_', ' ').title()}: {value}")
-
-        print("\nContent Analysis:")
-        for key, value in comparison["content_analysis"].items():
-            print(f"{key.replace('_', ' ').title()}: {value}")
-
-        print("\nRecommendations:")
-        for idx, rec in enumerate(comparison["recommendations"], 1):
-            print(f"{idx}. {rec}")
-
-        # Print predicted performance
-        performance = generator.predict_performance(storyboard)
-        print("\nPredicted Performance (based on YouTube reference):")
-        print(f"Engagement Rate Target: {performance['predicted_engagement']:.2%}")
-        print(f"Retention Rate Target: {performance['estimated_retention']:.2%}")
-        print(f"Viral Potential: {performance['viral_potential']}")
+        # generate and display recommendations
+        print("\n⌛ Generating recommendations...")
+        recommendations = analyzer.compare_videos(youtube_metrics, local_analysis)
+        print_recommendations(recommendations)
+        print("\n✅ Analysis complete!")
 
     except Exception as e:
-        print(f"Error: {str(e)}")
+        print(f"\n❌ Error: {str(e)}")
         return
 
 
